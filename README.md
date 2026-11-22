@@ -4,7 +4,7 @@ Automated security review for pull requests in Java and Kotlin projects, focused
 
 When a pull request is opened, the auditor fetches the changed files, runs Semgrep, asks Claude to verify and explain the findings, and posts a single Markdown report as a comment on the pull request.
 
-**Stack:** Java 17 · Spring Boot 3.2 · Spring Security · Spring Data JPA · WebClient · PostgreSQL / H2 · Semgrep · Claude API · n8n · Docker
+**Stack:** Java 17 · Spring Boot 3.2 · Spring Security · Spring Data JPA · WebClient · H2 · Semgrep · Claude API · n8n · Docker
 
 ## How it works
 
@@ -15,7 +15,7 @@ flowchart LR
     API --> FETCH[Fetch changed<br/>.java / .kt files]
     FETCH --> SG[Semgrep scan]
     SG --> AI[Claude: verify findings,<br/>explain, suggest fixes]
-    AI --> DB[(PostgreSQL:<br/>audits, findings, cost)]
+    AI --> DB[(H2:<br/>audits, findings, cost)]
     AI -->|PR comment| GH
 ```
 
@@ -56,11 +56,10 @@ docker compose up -d
 | --- | --- |
 | Auditor API | http://localhost:8080 |
 | n8n | http://localhost:5678 |
-| PostgreSQL | localhost:5432 (bound to 127.0.0.1) |
 
-Compose refuses to start if a required secret is missing.
-
-The `postgres` profile does not create a test client. Create one with the admin key and put the returned key into `DEFAULT_CLIENT_API_KEY` for the n8n workflow:
+Both ports are bound to 127.0.0.1. Compose refuses to start if a required secret is missing.
+The client used by n8n is created at startup with the key from `DEFAULT_CLIENT_API_KEY`.
+More clients can be added with the admin key:
 
 ```bash
 curl -X POST http://localhost:8080/api/v1/clients \
@@ -68,6 +67,8 @@ curl -X POST http://localhost:8080/api/v1/clients \
   -H "Content-Type: application/json" \
   -d '{"name":"My team","email":"dev@example.com"}'
 ```
+
+Audits are kept in an in-memory H2 database, so they are cleared when the application restarts.
 
 ## Running the full pipeline locally (GitHub → n8n → auditor → Telegram)
 
@@ -246,9 +247,8 @@ Webhook payload:
 | `ADMIN_API_KEY` | Key for client management; empty = endpoints locked |
 | `DEFAULT_CLIENT_API_KEY` | Key of the client created at startup in the `local` profile (the same key n8n sends); empty = `test-api-key-12345` |
 | `SEMGREP_ENABLED` | `true` to run Semgrep (must be installed; the Docker image includes it) |
-| `DB_URL`, `DB_USER`, `DB_PASSWORD` | PostgreSQL connection (`postgres` profile) |
 
-In the `local` profile the webhook secret and admin key fall back to development-only values (`local-dev-webhook-secret`, `local-dev-admin-key`). The `postgres` profile has no fallbacks.
+The webhook secret and admin key fall back to development-only values (`local-dev-webhook-secret`, `local-dev-admin-key`) when they are not set. Always set real values before exposing the application, for example through a tunnel.
 
 ## Security design
 
@@ -260,7 +260,7 @@ A security tool has to pass its own audit:
 - **Least exposure.** Entities are never serialized directly; DTOs make sure client API keys are not returned or logged. A new client's key is shown exactly once.
 - **Bounded work.** Async thread pool with a queue limit, maximum files per PR, maximum file size and maximum inline code length.
 - **HTML report escaping** before rendering.
-- **Container hardening.** Multi-stage build, non-root user, database and n8n ports bound to localhost.
+- **Container hardening.** Multi-stage build, non-root user, auditor and n8n ports bound to localhost.
 
 ## Tests
 
@@ -349,7 +349,7 @@ User input is concatenated into the SQL query, so `' OR 1=1 --` returns every us
 - [ ] Inline PR review comments on the affected lines, not only a summary comment
 - [ ] Monthly audit limits per client (fields exist, enforcement missing)
 - [ ] Hash client API keys in the database instead of storing them in plain text
-- [ ] Database migrations with Flyway instead of `ddl-auto`
+- [ ] Persistent storage for the audit history (currently in-memory H2)
 - [ ] OpenAPI documentation
 - [ ] Export the n8n workflow to the repository
 - [ ] Cost report per client and per repository
