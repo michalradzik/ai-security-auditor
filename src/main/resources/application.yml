@@ -1,0 +1,55 @@
+spring:
+  # Reads KEY=VALUE pairs from .env in the working directory (project root) if the file exists.
+  # Real environment variables still win, so Docker and CI are unaffected.
+  config:
+    import: optional:file:.env[.properties]
+  profiles:
+    default: local
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+app:
+  claude:
+    # No defaults on purpose: secrets come only from the environment.
+    api-key: ${CLAUDE_API_KEY:}
+    model: ${CLAUDE_MODEL:claude-sonnet-4-6}
+    max-tokens: ${CLAUDE_MAX_TOKENS:4000}
+    base-url: https://api.anthropic.com
+  github:
+    token: ${GITHUB_TOKEN:}
+    base-url: https://api.github.com
+  webhook:
+    # Empty secret = every webhook call is rejected (fail closed).
+    secret: ${WEBHOOK_SECRET:}
+  admin:
+    # Empty key = client management endpoints are locked.
+    api-key: ${ADMIN_API_KEY:}
+  # Base address used in shareable report links (/r/{id}/{token})
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
+  report:
+    # Key for signing report links; empty = use WEBHOOK_SECRET
+    link-secret: ${REPORT_LINK_SECRET:}
+    # en or pl: language of the texts written by the AI and of the report labels
+    language: ${REPORT_LANGUAGE:en}
+  semgrep:
+    enabled: ${SEMGREP_ENABLED:false}
+    timeout-seconds: 120
+  audit:
+    max-files-per-pr: 20
+    max-file-size-chars: 3000
+    async:
+      core-pool-size: 2
+      max-pool-size: 5
+      queue-capacity: 10
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.aisecaudit: INFO
+    org.springframework.web: INFO
+    org.hibernate: WARN

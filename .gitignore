@@ -1,0 +1,27 @@
+# Maven
+target/
+*.war
+*.ear
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+*.class
+
+# Logs
+*.log
+logs/
+
+# Environment files - never commit real secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

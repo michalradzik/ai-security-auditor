@@ -1,0 +1,28 @@
+# Local development profile: in-memory H2, no external services required.
+spring:
+  datasource:
+    url: jdbc:h2:mem:aisecaudit;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+app:
+  webhook:
+    # Development-only defaults (not secrets). Override with env variables.
+    secret: ${WEBHOOK_SECRET:local-dev-webhook-secret}
+  admin:
+    api-key: ${ADMIN_API_KEY:local-dev-admin-key}
+  local:
+    # Key of the client created at startup; set DEFAULT_CLIENT_API_KEY to match n8n
+    client-api-key: ${DEFAULT_CLIENT_API_KEY:test-api-key-12345}
+
+logging:
+  level:
+    com.aisecaudit: DEBUG
