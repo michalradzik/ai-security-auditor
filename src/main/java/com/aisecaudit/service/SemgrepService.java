@@ -1,7 +1,6 @@
 package com.aisecaudit.service;
 
 import com.aisecaudit.domain.Finding;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +33,8 @@ public class SemgrepService {
             "p/secrets"
     );
 
-    private final ObjectMapper objectMapper =
-        new ObjectMapper();
+    private final SemgrepResultParser parser =
+        new SemgrepResultParser(new ObjectMapper());
 
     /**
      * Analyzes the given files with Semgrep.
@@ -67,10 +66,11 @@ public class SemgrepService {
         try {
             tempDir = Files.createTempDirectory(
                 "semgrep-audit-");
-            writeFilesToTempDir(tempDir, filesContent);
+            Map<String, String> originalPaths =
+                writeFilesToTempDir(tempDir, filesContent);
             String jsonOutput = runSemgrep(tempDir);
             List<Finding> findings =
-                parseSemgrepJson(jsonOutput);
+                parser.parse(jsonOutput, originalPaths);
 
             log.info("Semgrep: {} potential issue(s) " +
                     "in {} file(s)",
@@ -101,11 +101,13 @@ public class SemgrepService {
         }
     }
 
-    private void writeFilesToTempDir(
+    /** Writes the files flat into the temp dir and returns temp file name -> original path. */
+    private Map<String, String> writeFilesToTempDir(
             Path tempDir,
             Map<String, String> filesContent)
             throws IOException {
 
+        Map<String, String> originalPaths = new HashMap<>();
         for (Map.Entry<String, String> entry :
                 filesContent.entrySet()) {
             // Flatten the path (replace / with __)
@@ -117,7 +119,9 @@ public class SemgrepService {
             Files.writeString(filePath,
                 entry.getValue(),
                 StandardCharsets.UTF_8);
+            originalPaths.put(safeFilename, entry.getKey());
         }
+        return originalPaths;
     }
 
     private String runSemgrep(Path tempDir)
@@ -169,83 +173,6 @@ public class SemgrepService {
         return stdout.isBlank()
             ? "{\"results\": []}"
             : stdout;
-    }
-
-    private List<Finding> parseSemgrepJson(
-            String jsonOutput) {
-
-        List<Finding> findings = new ArrayList<>();
-        try {
-            JsonNode root =
-                objectMapper.readTree(jsonOutput);
-            JsonNode results = root.path("results");
-
-            if (!results.isArray()) {
-                return findings;
-            }
-
-            for (JsonNode result : results) {
-                Finding finding = mapToFinding(result);
-                if (finding != null) {
-                    findings.add(finding);
-                }
-            }
-        } catch (Exception e) {
-            log.error("Failed to parse Semgrep JSON: {}",
-                     e.getMessage());
-        }
-        return findings;
-    }
-
-    private Finding mapToFinding(JsonNode result) {
-        try {
-            String ruleId = result
-                .path("check_id").asText("unknown");
-            String message = result
-                .path("extra")
-                .path("message").asText("");
-            String filePath = result
-                .path("path").asText("");
-            int line = result
-                .path("start")
-                .path("line").asInt(0);
-            String severity = result
-                .path("extra")
-                .path("severity").asText("WARNING");
-            String snippet = result
-                .path("extra")
-                .path("lines").asText("");
-
-            // Limit the snippet to 500 characters
-            if (snippet.length() > 500) {
-                snippet = snippet.substring(0, 500);
-            }
-
-            return Finding.builder()
-                .ruleId(ruleId)
-                .message(message)
-                .severity(mapSeverity(severity))
-                .filePath(filePath)
-                .lineNumber(line)
-                .codeSnippet(snippet)
-                .isFalsePositive(false)
-                .build();
-
-        } catch (Exception e) {
-            log.warn("Could not map a finding: {}",
-                    e.getMessage());
-            return null;
-        }
-    }
-
-    private Finding.Severity mapSeverity(
-            String semgrepSeverity) {
-        return switch (semgrepSeverity.toUpperCase()) {
-            case "ERROR"   -> Finding.Severity.HIGH;
-            case "WARNING" -> Finding.Severity.MEDIUM;
-            case "INFO"    -> Finding.Severity.LOW;
-            default        -> Finding.Severity.LOW;
-        };
     }
 
     private void cleanupTempDir(Path tempDir) {

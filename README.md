@@ -342,7 +342,7 @@ User input is concatenated into the SQL query, so `' OR 1=1 --` returns every us
 ## Roadmap
 
 - [x] Structured AI output (JSON) rendered into a fixed report layout, with unit tests
-- [ ] Unit tests for Semgrep JSON parsing
+- [x] Unit tests for Semgrep JSON parsing (Semgrep paths mapped back to repository paths)
 - [ ] Integration tests for GitHub and Claude clients with a mock HTTP server
 - [ ] Kotlin-specific rules (Ktor, Spring Kotlin DSL)
 - [ ] Deduplicate findings between Semgrep and the AI review
