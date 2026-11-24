@@ -37,6 +37,7 @@ public class AuditOrchestrator {
     private final GitHubService githubService;
     private final ReportRenderer reportRenderer;
     private final ReportLinks reportLinks;
+    private final FindingMerger findingMerger;
     private final AuditRepository auditRepository;
     private final ClientRepository clientRepository;
 
@@ -45,6 +46,7 @@ public class AuditOrchestrator {
                              GitHubService githubService,
                              ReportRenderer reportRenderer,
                              ReportLinks reportLinks,
+                             FindingMerger findingMerger,
                              AuditRepository auditRepository,
                              ClientRepository clientRepository) {
         this.semgrepService = semgrepService;
@@ -52,6 +54,7 @@ public class AuditOrchestrator {
         this.githubService = githubService;
         this.reportRenderer = reportRenderer;
         this.reportLinks = reportLinks;
+        this.findingMerger = findingMerger;
         this.auditRepository = auditRepository;
         this.clientRepository = clientRepository;
     }
@@ -111,10 +114,14 @@ public class AuditOrchestrator {
                 log.info("  No pull request number: report saved, not posted to GitHub");
             }
 
-            List<Finding> allFindings = new ArrayList<>(semgrepFindings);
+            List<Finding> aiFindings = new ArrayList<>();
+            List<String> falsePositives = List.of();
             if (aiResult.report() != null && !aiResult.isDemo()) {
-                aiResult.report().findings().forEach(f -> allFindings.add(toEntity(f, savedAudit)));
+                aiResult.report().findings().forEach(f -> aiFindings.add(toEntity(f, savedAudit)));
+                falsePositives = aiResult.report().falsePositives();
             }
+            // one entry per problem: AI findings on Semgrep lines are folded in, false positives are marked
+            List<Finding> allFindings = findingMerger.merge(semgrepFindings, aiFindings, falsePositives);
 
             savedAudit.setStatus(Audit.Status.COMPLETED);
             savedAudit.setFindings(allFindings);

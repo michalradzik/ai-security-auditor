@@ -345,7 +345,7 @@ User input is concatenated into the SQL query, so `' OR 1=1 --` returns every us
 - [x] Unit tests for Semgrep JSON parsing (Semgrep paths mapped back to repository paths)
 - [ ] Integration tests for GitHub and Claude clients with a mock HTTP server
 - [ ] Kotlin-specific rules (Ktor, Spring Kotlin DSL)
-- [ ] Deduplicate findings between Semgrep and the AI review
+- [x] Deduplicate findings between Semgrep and the AI review, mark AI-confirmed false positives
 - [ ] Inline PR review comments on the affected lines, not only a summary comment
 - [ ] Monthly audit limits per client (fields exist, enforcement missing)
 - [ ] Hash client API keys in the database instead of storing them in plain text
