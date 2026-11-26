@@ -258,8 +258,9 @@ A security tool has to pass its own audit:
 - **Fail closed.** A missing webhook secret or admin key disables those entry points instead of opening them.
 - **Constant-time comparison** of secrets (`MessageDigest.isEqual`) to avoid timing attacks.
 - **Least exposure.** Entities are never serialized directly; DTOs make sure client API keys are not returned or logged. A new client's key is shown exactly once.
+- **Hashed client API keys.** The database stores only the SHA-256 hash of each client key; incoming keys are hashed before the lookup. A leaked database, backup or H2 console does not reveal working keys, and a lost key can only be replaced, not recovered. SHA-256 (not bcrypt) is enough because keys are 192-bit random values, not guessable passwords.
 - **Bounded work.** Async thread pool with a queue limit, maximum files per PR, maximum file size and maximum inline code length.
-- **HTML report escaping** before rendering.
+- **HTML report escaping** before rendering, plus a strict `Content-Security-Policy` on report pages (no scripts at all), so an escaping bug could not turn into XSS.
 - **Container hardening.** Multi-stage build, non-root user, auditor and n8n ports bound to localhost.
 
 ## Tests
@@ -268,7 +269,7 @@ A security tool has to pass its own audit:
 mvn test
 ```
 
-The tests cover API-key authentication and authorization (client vs admin), webhook secret validation and payload handling, client key exposure, HTML escaping and the constant-time comparator. CI runs `mvn verify` on every push and pull request.
+The tests cover API-key authentication and authorization (client vs admin), webhook secret validation and payload handling, client key exposure and hashing, HTML escaping and the constant-time comparator. CI runs `mvn verify` on every push and pull request.
 
 ## Project structure
 
@@ -348,7 +349,7 @@ User input is concatenated into the SQL query, so `' OR 1=1 --` returns every us
 - [x] Deduplicate findings between Semgrep and the AI review, mark AI-confirmed false positives
 - [ ] Inline PR review comments on the affected lines, not only a summary comment
 - [ ] Monthly audit limits per client (fields exist, enforcement missing)
-- [ ] Hash client API keys in the database instead of storing them in plain text
+- [x] Hash client API keys in the database instead of storing them in plain text
 - [ ] Persistent storage for the audit history (currently in-memory H2)
 - [ ] OpenAPI documentation
 - [ ] Export the n8n workflow to the repository

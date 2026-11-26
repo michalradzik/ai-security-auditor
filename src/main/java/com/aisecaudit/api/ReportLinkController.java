@@ -17,6 +17,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ReportLinkController {
 
+    /**
+     * The page needs only its own inline CSS: no scripts, images, fonts, frames or forms.
+     * Reports contain code from pull requests, so even if HTML escaping ever failed,
+     * the browser would refuse to run any injected script.
+     */
+    static final String CONTENT_SECURITY_POLICY =
+            "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
     private final AuditRepository auditRepository;
     private final ReportLinks reportLinks;
 
@@ -51,6 +59,7 @@ public class ReportLinkController {
     private static ResponseEntity<String> page(HttpStatus status, String html) {
         return ResponseEntity.status(status)
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .header("Content-Security-Policy", CONTENT_SECURITY_POLICY)
                 .header("Referrer-Policy", "no-referrer")
                 .header("X-Robots-Tag", "noindex")
                 .contentType(MediaType.TEXT_HTML)
