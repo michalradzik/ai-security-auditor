@@ -1,6 +1,7 @@
 package com.aisecaudit.service;
 
 import com.aisecaudit.domain.Finding;
+import com.aisecaudit.security.SecretMasker;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -53,7 +54,8 @@ class SemgrepResultParser {
 
     private Finding toFinding(JsonNode result, Map<String, String> originalPathByTempName) {
         JsonNode extra = result.path("extra");
-        String snippet = extra.path("lines").asText("");
+        // mask before truncating, so a cut never leaves half a secret unmatched
+        String snippet = SecretMasker.mask(extra.path("lines").asText(""));
         if (snippet.length() > MAX_SNIPPET_LENGTH) {
             snippet = snippet.substring(0, MAX_SNIPPET_LENGTH);
         }

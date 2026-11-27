@@ -259,6 +259,7 @@ A security tool has to pass its own audit:
 - **Constant-time comparison** of secrets (`MessageDigest.isEqual`) to avoid timing attacks.
 - **Least exposure.** Entities are never serialized directly; DTOs make sure client API keys are not returned or logged. A new client's key is shown exactly once.
 - **Hashed client API keys.** The database stores only the SHA-256 hash of each client key; incoming keys are hashed before the lookup. A leaked database, backup or H2 console does not reveal working keys, and a lost key can only be replaced, not recovered. SHA-256 (not bcrypt) is enough because keys are 192-bit random values, not guessable passwords.
+- **Secrets are masked before they leave the scanner.** Hardcoded passwords, tokens, API keys (AWS, GitHub, OpenAI/Anthropic) and private keys are replaced with `ab****` in finding snippets and in the code sent to Claude. The report still says *where* the secret is, but its value is never stored, returned by the API or sent to a third-party model. Line numbers stay intact.
 - **Bounded work.** Async thread pool with a queue limit, maximum files per PR, maximum file size and maximum inline code length.
 - **HTML report escaping** before rendering, plus a strict `Content-Security-Policy` on report pages (no scripts at all), so an escaping bug could not turn into XSS.
 - **Container hardening.** Multi-stage build, non-root user, auditor and n8n ports bound to localhost.

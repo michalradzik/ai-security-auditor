@@ -7,6 +7,7 @@ import com.aisecaudit.report.AiReportParser;
 import com.aisecaudit.report.ReportContext;
 import com.aisecaudit.report.ReportRenderer;
 import com.aisecaudit.report.ReportSeverity;
+import com.aisecaudit.security.SecretMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -159,7 +160,8 @@ public class ClaudeService {
                 sb.append("[remaining files skipped: max ").append(MAX_FILES_IN_PROMPT).append(" per audit]\n\n");
                 break;
             }
-            String content = entry.getValue();
+            // secret values never leave our infrastructure; line numbers stay the same
+            String content = SecretMasker.mask(entry.getValue());
             if (content.length() > MAX_FILE_CHARS_IN_PROMPT) {
                 content = content.substring(0, MAX_FILE_CHARS_IN_PROMPT)
                         + "\n// ... [truncated to " + MAX_FILE_CHARS_IN_PROMPT + " characters]";
